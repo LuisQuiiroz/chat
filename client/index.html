@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Char en vivo</title>
+  <script type="module">
+    import { io } from 'https://cdn.socket.io/4.7.5/socket.io.esm.min.js'
+
+    const getUsername = async () => {
+        const username = localStorage.getItem('username')
+        if (username) {
+          return username
+        } else {
+          const res = await fetch('https://randomuser.me/api/')
+          const data = await res.json()
+          const randomUsername = data.results[0].login.username
+          localStorage.setItem('username', randomUsername)
+          return randomUsername
+        }
+      }
+      
+    const socket = io({
+      auth: {
+        username: await getUsername(),
+        serverOffset: 0,
+      }
+    })
+
+
+    const $form = document.getElementById('form') 
+    const $input = document.getElementById('input') 
+    const $messages = document.getElementById('messages') 
+    const usernameFromLocal = localStorage.getItem('username')
+
+    socket.on('chat message', (message, serverOffset, username) => { // recibir mensaje del back
+      const isMe = usernameFromLocal === username
+      const $item = `
+      <li>
+        <p class="message">
+          <span>
+            ${message}
+          </span>
+          </p>
+      </li>
+      `
+      
+      $messages.insertAdjacentHTML('beforeend', $item)
+
+      const $newMessage = $messages.lastElementChild; // Obtener el último elemento añadido (nuevo mensaje)
+      const $messageElement = $newMessage.querySelector('.message'); // Seleccionar el elemento de mensaje dentro del nuevo mensaje
+
+      if ($messageElement) {
+        if (isMe) {
+          $messageElement.style.textAlign = "end"; // Aplicar estilo de alineación "end" si el mensaje fue enviado por el usuario actual
+        } else {
+          $messageElement.style.textAlign = ""; // Restablecer estilo de alineación si el mensaje no fue enviado por el usuario actual
+        }
+      }
+
+      socket.auth.serverOffset = serverOffset
+      $messages.scrollTop = $messages.scrollHeight
+    })
+
+    $form.addEventListener('submit', (e) => { // enviar mensaje al back
+      e.preventDefault()
+
+      if($input.value){
+        socket.emit('chat message', $input.value)
+        $input.value = ''
+      }
+    })
+  </script>
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    body{
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      display: grid;
+      place-content: center;
+      height: 100vh;
+      padding: 8px;
+      grid-template-rows: 1fr;
+    }
+
+    ::-webkit-scrollbar {
+      width: 10px; 
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background-color: #888; 
+      border-radius: 5px; 
+    }
+
+    ::-webkit-scrollbar-track {
+      background-color: #f1f1f1;
+    }
+
+    ::-webkit-scrollbar-track-piece:start {
+      background-color: #f1f1f1; 
+    }
+
+    ::-webkit-scrollbar-track-piece:end {
+      background-color: #f1f1f1; 
+    }
+
+    #chat {
+      border: 1px solid #ccc;
+      border-radius: 8px;  
+      overflow: hidden;
+      min-width: 300px;
+      width: 75vw;
+      height: 100%;
+      background-color: #eee;
+    }
+
+    #form {
+      /* height: 48px; */
+      padding: 4px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    #input {
+      flex: 1;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 20px;
+      margin-right: 10px;
+    }
+
+    input:focus {
+      outline: 0;
+    }
+
+    #form > button {
+      padding: 8px 15px;
+      border: none;
+      border-radius: 20px;
+      background-color: #128c7e;
+      color: #fff;
+      cursor: pointer;
+    }
+
+    #form > button:hover {
+      background-color: #0d6e5b;
+    }
+
+    #messages {
+      list-style-type: none;
+      margin: 0;
+      padding: 0;
+      overflow-y: scroll;
+      height: 100vh;
+      scroll-behavior: smooth;
+      padding-top: 70px;
+      padding-bottom: 16px;
+
+    }
+
+    #messages > li {
+      padding: 2px 16px;
+      
+    }
+
+    p {
+      margin: 0;
+    }
+    
+    span {
+      background: #128c7e;
+      color: white;
+      padding: 8px;
+      border-radius: 8px;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+  <section id="chat">
+    <ul id="messages"></ul>
+    <form id="form">
+      <input type="text" name="message" id="input" placeholder="Type a message" autocomplete="off" autofocus>
+      <button type="submit">Enviar</button>
+    </form>
+  </section>
+</body>
+</html>
